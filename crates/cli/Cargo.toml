@@ -1,0 +1,19 @@
+[package]
+name = "eutrader"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "eutrader"
+path = "src/main.rs"
+
+[dependencies]
+eutrader-core = { workspace = true }
+eutrader-feed = { workspace = true }
+eutrader-strategy = { workspace = true }
+eutrader-engine = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }

@@ -1,0 +1,25 @@
+mode = "paper" # "paper" or "live"
+
+[risk]
+max_position_per_market = 100.0
+max_total_exposure = 500.0
+max_unrealized_loss = 50.0
+quote_refresh_interval_ms = 1000
+
+# Auto-discover the top markets by volume — no manual token_id needed
+[auto_discover]
+min_volume = 50000.0   # Only markets with >$50k volume
+max_markets = 3        # Trade up to 3 markets simultaneously
+spread_bps = 400       # 4% spread (2% each side)
+size = 10.0            # Quote 10 shares per side
+max_inventory = 50.0   # Max net position per market
+skew_factor = 0.001    # Inventory skew aggressiveness
+
+# Or manually specify markets (overrides auto_discover):
+# [[markets]]
+# name = "Will BTC be above 100k by March?"
+# token_id = "71321045679252212594626385532706912750332728571942532289631379312455583992563"
+# spread_bps = 300
+# size = 10.0
+# max_inventory = 50.0
+# skew_factor = 0.001

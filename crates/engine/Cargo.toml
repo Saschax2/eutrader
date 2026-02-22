@@ -1,0 +1,21 @@
+[package]
+name = "eutrader-engine"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+eutrader-core = { workspace = true }
+eutrader-feed = { workspace = true }
+eutrader-strategy = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+futures = { workspace = true }
+rust_decimal = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+rust_decimal_macros = { workspace = true }

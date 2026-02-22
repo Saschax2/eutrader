@@ -1,0 +1,4 @@
+/target
+.env
+paper_trades.jsonl
+*.log

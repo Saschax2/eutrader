@@ -1,0 +1,16 @@
+[package]
+name = "eutrader-feed"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+eutrader-core = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+futures = { workspace = true }
+rust_decimal = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
