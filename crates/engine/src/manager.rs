@@ -7,6 +7,7 @@ use tracing::{debug, error, info, warn};
 use eutrader_core::{
     Config, Fill, InventoryPosition, MarketConfig, MarketSnapshot, OpenOrder, Quote, Side,
 };
+use eutrader_core::dashboard::{FillRow, MarketRow, SharedDashboard};
 use eutrader_strategy::{Quoter, RiskManager};
 
 use crate::executor::Executor;
@@ -23,6 +24,8 @@ pub struct OrderManager<E: Executor> {
     config: Config,
     /// Lookup from token_id to its per-market config.
     market_configs: HashMap<String, MarketConfig>,
+    /// Optional shared dashboard state for TUI rendering.
+    dashboard: Option<SharedDashboard>,
 }
 
 impl<E: Executor> OrderManager<E> {
@@ -46,7 +49,14 @@ impl<E: Executor> OrderManager<E> {
             positions: HashMap::new(),
             config,
             market_configs,
+            dashboard: None,
         }
+    }
+
+    /// Attach a shared dashboard for TUI rendering.
+    pub fn with_dashboard(mut self, dashboard: SharedDashboard) -> Self {
+        self.dashboard = Some(dashboard);
+        self
     }
 
     /// Run the main event loop, consuming a stream of `MarketSnapshot`s.
@@ -155,20 +165,37 @@ impl<E: Executor> OrderManager<E> {
         // --- Step 3: Reconcile orders ---
         self.reconcile_orders(token_id, &target_quote).await?;
 
-        // --- Step 4: Log state ---
+        // --- Step 4: Update dashboard + log state ---
         let position = &self.positions[token_id];
         let unrealized = position.unrealized_pnl(snapshot.midpoint);
-        info!(
+
+        if let Some(ref dash) = self.dashboard {
+            if let Ok(mut state) = dash.write() {
+                state.update_market(MarketRow {
+                    name: market_cfg.name.clone(),
+                    token_id: token_id.to_string(),
+                    midpoint: snapshot.midpoint,
+                    our_bid: target_quote.bid_price,
+                    our_ask: target_quote.ask_price,
+                    spread: target_quote.spread(),
+                    inventory: position.net_position,
+                    realized_pnl: position.realized_pnl,
+                    unrealized_pnl: unrealized,
+                    fill_count: position.fill_count,
+                    last_update: snapshot.timestamp,
+                });
+                state.refresh_totals();
+            }
+        }
+
+        debug!(
             token = %token_id,
             mid = %snapshot.midpoint,
-            our_bid = %target_quote.bid_price,
-            our_ask = %target_quote.ask_price,
-            spread = %target_quote.spread(),
-            inventory = %position.net_position,
-            realized_pnl = %position.realized_pnl,
-            unrealized_pnl = %unrealized,
-            fills = position.fill_count,
-            "quote cycle"
+            bid = %target_quote.bid_price,
+            ask = %target_quote.ask_price,
+            inv = %position.net_position,
+            pnl = %position.realized_pnl,
+            "tick"
         );
 
         Ok(())
@@ -235,6 +262,33 @@ impl<E: Executor> OrderManager<E> {
                 .entry(fill.token_id.clone())
                 .or_insert_with(|| InventoryPosition::new(fill.token_id.clone()));
             position.apply_fill(fill);
+
+            info!(
+                token = %fill.token_id,
+                side = %fill.side,
+                price = %fill.price,
+                size = %fill.size,
+                "FILL"
+            );
+
+            if let Some(ref dash) = self.dashboard {
+                let market_name = self
+                    .market_configs
+                    .get(&fill.token_id)
+                    .map(|c| c.name.clone())
+                    .unwrap_or_else(|| fill.token_id[..8].to_string());
+
+                if let Ok(mut state) = dash.write() {
+                    state.add_fill(FillRow {
+                        timestamp: fill.timestamp,
+                        market_name,
+                        side: fill.side,
+                        price: fill.price,
+                        size: fill.size,
+                        pnl_after: position.realized_pnl,
+                    });
+                }
+            }
         }
     }
 
