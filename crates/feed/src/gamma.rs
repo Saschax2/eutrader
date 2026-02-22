@@ -26,7 +26,8 @@ pub struct GammaMarket {
     #[serde(default)]
     pub tokens: Vec<Token>,
     /// CLOB token IDs: [Yes token ID, No token ID].
-    #[serde(default)]
+    /// The Gamma API returns this as a JSON string (stringified array), not a native array.
+    #[serde(default, deserialize_with = "deserialize_clob_token_ids")]
     pub clob_token_ids: Vec<String>,
     pub active: bool,
     pub closed: bool,
@@ -123,6 +124,29 @@ impl GammaClient {
 
         info!(count = market_configs.len(), "auto-discovery complete");
         Ok(market_configs)
+    }
+}
+
+/// Deserialize clobTokenIds which can be either a JSON array or a stringified JSON array.
+fn deserialize_clob_token_ids<'de, D>(deserializer: D) -> std::result::Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de;
+
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        Vec(Vec<String>),
+        String(String),
+    }
+
+    match StringOrVec::deserialize(deserializer)? {
+        StringOrVec::Vec(v) => Ok(v),
+        StringOrVec::String(s) => {
+            // Try parsing the string as a JSON array
+            serde_json::from_str(&s).map_err(de::Error::custom)
+        }
     }
 }
 
